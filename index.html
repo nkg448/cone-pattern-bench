@@ -1,0 +1,1021 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cone Pattern Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style id="page-size">@page { size: 210mm 297mm; margin: 0 }</style>
+<style>
+/* Layout: workbench. Controls rail on the left, drawing surfaces (sketch, 3D, flat pattern) on the right. */
+:root {
+  --bg: #e7ebe8;
+  --panel: #f7f8f6;
+  --ink: #1c2220;
+  --muted: #5a6561;
+  --line: #c9d1cc;
+  --grid: #dfe5e1;
+  --copper: #a4532a;
+  --copper-soft: #ecd3c1;
+  --verdigris: #2b7f6d;
+  --warn: #a8382a;
+  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141917; --panel: #1c2321; --ink: #e4e9e6; --muted: #98a59f; --line: #34403b;
+    --grid: #26302c; --copper: #e08c58; --copper-soft: #4a3022; --verdigris: #5cc0a8; --warn: #f07a66;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141917; --panel: #1c2321; --ink: #e4e9e6; --muted: #98a59f; --line: #34403b;
+  --grid: #26302c; --copper: #e08c58; --copper-soft: #4a3022; --verdigris: #5cc0a8; --warn: #f07a66;
+  color-scheme: dark;
+}
+* { box-sizing: border-box }
+html, body { margin: 0 }
+body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--f-body); }
+button, select, input { font: inherit; color: inherit }
+:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px }
+
+.app { padding: 16px; display: grid; gap: 16px; grid-template-columns: 330px minmax(0, 1fr); align-items: start; max-width: 1600px; margin: 0 auto; }
+header.top { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+header.top h1 { font: 800 30px/1 var(--f-display); font-stretch: 78%; letter-spacing: .01em; margin: 0; text-transform: uppercase; }
+header.top h1 span { color: var(--copper) }
+header.top p { margin: 4px 0 0; color: var(--muted); max-width: 62ch }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel) }
+.seg button { border: 0; background: none; padding: 6px 12px; cursor: pointer; font-family: var(--f-mono); font-size: 12px }
+.seg button[aria-pressed="true"] { background: var(--copper); color: #fff }
+
+aside.rail { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; display: flex; flex-direction: column; gap: 14px }
+.presets { display: flex; flex-wrap: wrap; gap: 6px }
+.presets button { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 4px 10px; font-size: 12px; cursor: pointer }
+.presets button:hover { border-color: var(--copper); color: var(--copper) }
+fieldset { border: 0; border-top: 1px solid var(--line); margin: 0; padding: 10px 0 0; display: flex; flex-direction: column; gap: 9px }
+legend { font: 700 12px var(--f-display); font-stretch: 85%; text-transform: uppercase; letter-spacing: .09em; color: var(--copper); padding-right: 8px }
+.ctl { display: grid; grid-template-columns: 1fr 92px; gap: 2px 8px; align-items: center; position: relative }
+.lab { display: flex; align-items: center; gap: 6px; min-width: 0 }
+.q { flex: none; width: 17px; height: 17px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font: 600 10.5px/15px var(--f-mono); cursor: help }
+.q:hover, .q:focus-visible, .tip-open .q { border-color: var(--copper); color: var(--copper) }
+.tip { display: none; position: absolute; z-index: 10; left: 0; right: 0; top: 24px; padding: 9px 11px; border-radius: 6px; background: var(--ink); color: var(--panel); font-size: 12.5px; line-height: 1.45; box-shadow: 0 6px 20px rgb(0 0 0 / .22) }
+.tip b { color: var(--copper-soft) }
+.ctl:has(> .lab .q:hover) > .tip, .ctl:has(> .lab .q:focus-visible) > .tip, .ctl.tip-open > .tip { display: block }
+.ctl label { font-size: 12.5px; color: var(--ink) }
+.ctl .hint { grid-column: 1 / -1; font-size: 11px; color: var(--muted); margin-top: -2px }
+.ctl input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--copper); margin: 0; height: 18px }
+.num { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); overflow: hidden }
+.num input { width: 100%; min-width: 0; border: 0; background: none; padding: 3px 4px 3px 6px; font-family: var(--f-mono); font-size: 12.5px; text-align: right; font-variant-numeric: tabular-nums }
+.num span { font-family: var(--f-mono); font-size: 11px; color: var(--muted); padding-right: 6px }
+.ctl select { grid-column: 1 / -1; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); padding: 4px 6px }
+.ctl.chk { grid-template-columns: auto 1fr; }
+.ctl.chk input { accent-color: var(--copper); width: 16px; height: 16px; margin: 0 }
+
+main { display: flex; flex-direction: column; gap: 16px; min-width: 0 }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0 }
+.card h2 { font: 700 13px var(--f-display); font-stretch: 85%; text-transform: uppercase; letter-spacing: .09em; margin: 0 0 8px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline }
+.card h2 small { font: 400 11.5px var(--f-body); text-transform: none; letter-spacing: 0; color: var(--muted) }
+.views { display: grid; grid-template-columns: 1fr 1fr; gap: 16px }
+#sketch { width: 100%; height: 330px; display: block; touch-action: none; user-select: none }
+#view3d { width: 100%; height: 330px; display: block; cursor: grab; touch-action: none }
+#view3d:active { cursor: grabbing }
+.sk-grid { stroke: var(--grid); stroke-width: 1; vector-effect: non-scaling-stroke }
+.sk-axis { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 8 3 2 3; vector-effect: non-scaling-stroke; opacity: .6 }
+.sk-body { fill: var(--copper-soft); stroke: var(--copper); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round }
+.sk-rule { stroke: var(--copper); stroke-width: 1; opacity: .35; vector-effect: non-scaling-stroke }
+.sk-dim { stroke: var(--muted); stroke-width: 1; vector-effect: non-scaling-stroke }
+.sk-txt { fill: var(--muted); font-family: var(--f-mono) }
+.h-dia { fill: var(--copper); stroke: var(--panel); stroke-width: 2; vector-effect: non-scaling-stroke; cursor: ew-resize }
+.h-tilt { fill: var(--verdigris); stroke: var(--panel); stroke-width: 2; vector-effect: non-scaling-stroke; cursor: ns-resize }
+.h-move { fill: var(--panel); stroke: var(--ink); stroke-width: 2.5; vector-effect: non-scaling-stroke; cursor: move }
+[data-h]:hover { filter: brightness(1.15) }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; color: var(--muted); margin-top: 6px }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.btn { border: 1px solid var(--line); background: var(--bg); padding: 7px 12px; border-radius: 6px; cursor: pointer; font-weight: 500 }
+.btn:hover { border-color: var(--copper) }
+.btn.primary { background: var(--copper); border-color: var(--copper); color: #fff }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin: 10px 0 }
+.stats div { background: var(--panel); padding: 8px 10px }
+.stats b { display: block; font: 500 15px var(--f-mono); font-variant-numeric: tabular-nums }
+.stats span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em }
+.warn { color: var(--warn); font-weight: 500; margin: 6px 0 }
+.pv-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--bg) }
+#pattern { display: block; width: 100%; height: auto; max-height: 72vh }
+.pv .cut { fill: var(--panel); stroke: var(--ink); stroke-width: 1.4; vector-effect: non-scaling-stroke; stroke-linejoin: round }
+.pv .fold { fill: none; stroke: var(--verdigris); stroke-width: 1.2; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke }
+.pv .rule { fill: none; stroke: var(--copper); stroke-width: 1; stroke-dasharray: 2 4; opacity: .7; vector-effect: non-scaling-stroke }
+.pv .tick, .pv .guide { fill: none; stroke: var(--ink); stroke-width: 1; vector-effect: non-scaling-stroke }
+.pv .cal { fill: none; stroke: var(--muted); stroke-width: 1; vector-effect: non-scaling-stroke }
+.pv text { fill: var(--ink); font-family: var(--f-mono) }
+.pv text.lbl { fill: var(--copper); font-family: var(--f-display); font-weight: 700 }
+.pv .rband { fill: var(--panel); stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke }
+.pv .rul { fill: none; stroke: var(--muted); stroke-width: 1; vector-effect: non-scaling-stroke }
+.pv text.rt { fill: var(--muted) }
+.pv .tile { fill: none; stroke: var(--verdigris); stroke-width: 1; stroke-dasharray: 3 5; vector-effect: non-scaling-stroke; opacity: .8 }
+.pv text.tl { fill: var(--verdigris); font-weight: 500 }
+
+.info { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px }
+dl.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; font-size: 13px }
+dl.kv dt { color: var(--muted) }
+dl.kv dd { margin: 0; font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right }
+.tbl-wrap { overflow: auto; max-height: 300px }
+table.st { border-collapse: collapse; width: 100%; font-size: 12.5px }
+table.st th { text-align: right; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--line); padding: 4px 6px; position: sticky; top: 0; background: var(--panel) }
+table.st td { text-align: right; padding: 3px 6px; font-family: var(--f-mono); font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--grid) }
+.howto { font-size: 13px; color: var(--ink); margin: 0; padding-left: 20px; display: grid; gap: 4px; max-width: 80ch }
+
+#print-root { display: none }
+@media (max-width: 1000px) {
+  .app { grid-template-columns: minmax(0, 1fr) }
+  aside.rail { position: static; max-height: none }
+}
+@media (max-width: 760px) {
+  .views, .info { grid-template-columns: minmax(0, 1fr) }
+  #sketch, #view3d { height: 280px }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+
+@media print {
+  :root { color-scheme: light }
+  body { background: #fff !important; color: #000 }
+  .app { display: none !important }
+  #print-root { display: block }
+  .page { position: relative; overflow: hidden; page-break-after: always; break-after: page; background: #fff }
+  .page:last-child { page-break-after: auto; break-after: auto }
+  .page svg { display: block }
+  .pg .cut { fill: none; stroke: #000; stroke-width: .3; stroke-linejoin: round }
+  .pg .fold { fill: none; stroke: #000; stroke-width: .25; stroke-dasharray: 2.5 1.5 }
+  .pg .rule { fill: none; stroke: #888; stroke-width: .18; stroke-dasharray: .6 1.4 }
+  .pg .tick { fill: none; stroke: #000; stroke-width: .25 }
+  .pg .cal { fill: none; stroke: #000; stroke-width: .2 }
+  .pg .guide { fill: none; stroke: #aaa; stroke-width: .15 }
+  .pg .rul { fill: none; stroke: #444; stroke-width: .15 }
+  .pg text.rt { fill: #444 }
+  .pg .frame { fill: none; stroke: #bbb; stroke-width: .15 }
+  .pg .ovl { fill: none; stroke: #999; stroke-width: .15; stroke-dasharray: 1 1 }
+  .pg text { font-family: "IBM Plex Mono", Consolas, monospace; fill: #000 }
+  .pg text.lbl { font-family: "Archivo", Arial, sans-serif; font-weight: 700 }
+  .pg text.meta { fill: #555 }
+  .page.sheet { overflow: visible }
+  .sheet tr { break-inside: avoid }
+  .sheet { padding: 14mm 14mm; font: 9pt/1.4 "IBM Plex Sans", Arial, sans-serif; color: #000 }
+  .sheet h1 { font: 800 20pt/1 "Archivo", Arial, sans-serif; text-transform: uppercase; margin: 0 0 2mm }
+  .sheet h3 { font: 700 9pt "Archivo", Arial, sans-serif; text-transform: uppercase; letter-spacing: .08em; margin: 5mm 0 1.5mm; border-bottom: .3mm solid #000 }
+  .sheet .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm }
+  .sheet table { border-collapse: collapse; width: 100% }
+  .sheet td, .sheet th { padding: .6mm 1.5mm; border-bottom: .15mm solid #ccc; text-align: left }
+  .sheet td.n, .sheet th.n { text-align: right; font-family: "IBM Plex Mono", Consolas, monospace }
+  .sheet ol { padding-left: 5mm; margin: 0 }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>Cone Pattern <span>Bench</span></h1>
+      <p>Shape a cone, frustum or skewed funnel, then print its flat template at true scale for cutting from sheet copper.</p>
+    </div>
+    <div class="seg" role="group" aria-label="Units">
+      <button type="button" id="u-mm" aria-pressed="true">mm</button>
+      <button type="button" id="u-in" aria-pressed="false">inch</button>
+    </div>
+  </header>
+
+  <aside class="rail">
+    <div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Start from</div>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div id="controls"></div>
+  </aside>
+
+  <main>
+    <div class="views">
+      <section class="card">
+        <h2>Side view <small>drag the handles</small></h2>
+        <svg id="sketch" aria-label="Side elevation sketch with draggable handles"></svg>
+        <div class="legend">
+          <span><i style="background:var(--copper)"></i>diameter</span>
+          <span><i style="background:var(--verdigris);border-radius:1px"></i>cut angle</span>
+          <span><i style="border:2px solid var(--ink)"></i>height + skew</span>
+        </div>
+      </section>
+      <section class="card">
+        <h2>3D preview <small>drag to turn, double-click to reset</small></h2>
+        <canvas id="view3d" aria-label="3D preview of the cone"></canvas>
+        <div class="legend"><span><i style="background:var(--verdigris)"></i>seam</span><span>darker face = inside</span></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>Flat pattern <small id="pv-note"></small></h2>
+      <div class="toolbar">
+        <button class="btn primary" id="btn-print" type="button">Print at true scale</button>
+        <button class="btn" id="btn-svg" type="button">Download SVG</button>
+        <button class="btn" id="btn-dxf" type="button">Download DXF</button>
+        <span style="font-size:12px;color:var(--muted)">Print at 100% / "Actual size". Check the 50 mm square before cutting.</span>
+      </div>
+      <div id="warns"></div>
+      <div class="stats" id="stats"></div>
+      <div class="pv-wrap"><svg id="pattern" class="pv" aria-label="Flat pattern preview"></svg></div>
+      <div class="legend">
+        <span>solid = cut</span><span style="color:var(--verdigris)">dashed = fold or solder lap</span><span style="color:var(--copper)">dotted = bend lines (straight lines the metal rolls along)</span><span style="color:var(--verdigris)">dash-dot boxes = printed pages</span>
+      </div>
+    </section>
+
+    <section class="card info">
+      <div>
+        <h2>Measurements</h2>
+        <dl class="kv" id="kv"></dl>
+      </div>
+      <div>
+        <h2>Reference lines <small>true lengths, for checking the formed piece</small></h2>
+        <div class="tbl-wrap"><table class="st" id="stations"></table></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Shop notes</h2>
+      <ol class="howto">
+        <li>Print with scaling off. Measure the 50 mm and 1 in squares; if they are off, fix printer scaling before cutting.</li>
+        <li>For multi-page prints, trim each page on its frame line along the dotted overlap edge, line up the grey crosses, and tape.</li>
+        <li>Glue the template to the copper (spray adhesive or glue stick), scribe or cut on the solid line, and cut tabs before folding.</li>
+        <li>The printed side is the outside of the cone. Roll along the dotted bend lines; on skewed cones they fan unevenly, so follow them rather than rolling evenly.</li>
+        <li>Pattern is drawn on the mid-thickness of the metal, so the "measured to" setting decides whether your diameters land on the inside or outside.</li>
+        <li>Lap the plain seam edge over the solder lap. Check the formed piece against the reference-line lengths and the angle marks on the edges.</li>
+        <li>Tabs: the solder lap stays flat and hides behind the opposite seam edge. Base and top tabs fold on their dashed lines after the seam is soldered. Fold them outward for a visible flange or inward to hide them, then solder them to a disc. Hover the ? next to each setting for sizes.</li>
+      </ol>
+    </section>
+  </main>
+</div>
+<div id="print-root"></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const DEG = Math.PI / 180;
+const PAPERS = { A4: [210, 297], Letter: [215.9, 279.4], Legal: [215.9, 355.6], A3: [297, 420], Tabloid: [279.4, 431.8] };
+
+const DEFAULTS = {
+  unit: 'mm',
+  D1: 140, D2: 60, H: 110, offX: 25, offY: 0, tiltT: 0, tiltB: 0, ell: 1,
+  thick: 0.5, ref: 'outside',
+  pieces: 1, seamAngle: 180, seamTab: 6, botTabs: 0, botTabDepth: 8, topTabs: 0, topTabDepth: 8,
+  capBottom: false, capTop: false, capMargin: 3, stations: 12, showRulings: true, autoRotate: true,
+  paper: 'A4', orient: 'auto', margin: 8, overlap: 10, dataSheet: true
+};
+const SHAPE_KEYS = ['D1', 'D2', 'H', 'offX', 'offY', 'tiltT', 'tiltB', 'ell'];
+const PRESETS = [
+  ['Lampshade', { D1: 140, D2: 60, H: 110, offX: 0, offY: 0, tiltT: 0, tiltB: 0, ell: 1 }],
+  ['Pointed cone', { D1: 110, D2: 0, H: 140, offX: 0, offY: 0, tiltT: 0, tiltB: 0, ell: 1 }],
+  ['Skewed funnel', { D1: 150, D2: 45, H: 120, offX: 45, offY: 0, tiltT: 0, tiltB: 0, ell: 1 }],
+  ['Raked top', { D1: 110, D2: 70, H: 130, offX: 0, offY: 0, tiltT: 22, tiltB: 0, ell: 1 }],
+  ['Mitred tube', { D1: 60, D2: 60, H: 120, offX: 0, offY: 0, tiltT: 45, tiltB: 0, ell: 1 }],
+  ['Oval vase', { D1: 120, D2: 80, H: 150, offX: 0, offY: 0, tiltT: 0, tiltB: 0, ell: 0.65 }],
+];
+
+const FIELDS = [
+  ['Shape', [
+    { k: 'D1', label: 'Base diameter', type: 'len', min: 0, max: 500, step: 0.5, hint: '0 makes the point face down' },
+    { k: 'D2', label: 'Top diameter', type: 'len', min: 0, max: 500, step: 0.5, hint: '0 makes a pointed cone' },
+    { k: 'H', label: 'Height', type: 'len', min: 5, max: 500, step: 0.5 },
+    { k: 'offX', label: 'Skew, sideways', type: 'len', min: -250, max: 250, step: 0.5, hint: 'Shifts the top off-center' },
+    { k: 'offY', label: 'Skew, front-to-back', type: 'len', min: -250, max: 250, step: 0.5 },
+    { k: 'tiltT', label: 'Top cut angle', type: 'deg', min: -60, max: 60, step: 0.5 },
+    { k: 'tiltB', label: 'Base cut angle', type: 'deg', min: -60, max: 60, step: 0.5 },
+    { k: 'ell', label: 'Oval ratio (depth / width)', type: 'num', min: 0.3, max: 2, step: 0.01 },
+  ]],
+  ['Material', [
+    { k: 'thick', label: 'Sheet thickness', type: 'len', min: 0, max: 3, step: 0.01, hint: '24 ga copper is about 0.51 mm' },
+    { k: 'ref', label: 'Diameters measured to', type: 'select', options: [['outside', 'Outside of the metal'], ['inside', 'Inside of the metal'], ['mean', 'Middle of the metal']] },
+  ]],
+  ['Seams and tabs', [
+    { k: 'pieces', label: 'Pieces around', type: 'int', min: 1, max: 8, step: 1, hint: 'Split into gores when one piece will not fit your sheet' },
+    { k: 'seamAngle', label: 'Seam position', type: 'deg', min: 0, max: 360, step: 1, hint: '0° is the side the top leans toward' },
+    { k: 'seamTab', label: 'Solder lap on seam', type: 'len', min: 0, max: 25, step: 0.5 },
+    { k: 'botTabs', label: 'Base tabs per piece', type: 'int', min: 0, max: 24, step: 1 },
+    { k: 'botTabDepth', label: 'Base tab depth', type: 'len', min: 2, max: 30, step: 0.5 },
+    { k: 'topTabs', label: 'Top tabs per piece', type: 'int', min: 0, max: 24, step: 1 },
+    { k: 'topTabDepth', label: 'Top tab depth', type: 'len', min: 2, max: 30, step: 0.5 },
+  ]],
+  ['Extras', [
+    { k: 'capBottom', label: 'Base disc template', type: 'bool' },
+    { k: 'capTop', label: 'Top disc template', type: 'bool' },
+    { k: 'capMargin', label: 'Disc oversize', type: 'len', min: 0, max: 20, step: 0.5, hint: 'Added beyond the outside of the cone wall' },
+    { k: 'stations', label: 'Reference lines around', type: 'int', min: 4, max: 48, step: 1 },
+    { k: 'showRulings', label: 'Draw bend lines', type: 'bool' },
+    { k: 'autoRotate', label: 'Rotate pieces to use less paper', type: 'bool' },
+  ]],
+  ['Paper', [
+    { k: 'paper', label: 'Paper size', type: 'select', options: Object.keys(PAPERS).map(k => [k, k]) },
+    { k: 'orient', label: 'Orientation', type: 'select', options: [['auto', 'Fewest pages'], ['portrait', 'Portrait'], ['landscape', 'Landscape']] },
+    { k: 'margin', label: 'Printer margin', type: 'len', min: 3, max: 25, step: 0.5 },
+    { k: 'overlap', label: 'Page overlap for taping', type: 'len', min: 0, max: 30, step: 0.5 },
+    { k: 'dataSheet', label: 'Print a data sheet page', type: 'bool' },
+  ]],
+];
+const HELP = {
+  D1: 'Width of the cone at its base, measured straight across (left to right in the side view). Set 0 to make an upside-down cone with the point at the bottom.',
+  D2: 'Width across the top opening. 0 closes the top to a point. Equal to the base diameter gives a straight tube.',
+  H: 'Vertical height from the center of the base to the center of the top, not the length of the sloping wall.',
+  offX: 'Slides the top opening sideways so the cone leans. 0 is a straight, symmetrical cone. The wall on the leaning side gets steeper and shorter. The pattern stays exact because it is still a true cone.',
+  offY: 'Same as sideways skew, but toward or away from you. It is not visible in the side view, so check the 3D preview.',
+  tiltT: 'Slices the top off at an angle instead of flat, like a raked lampshade or a pipe mitre. Positive values raise the 0° side (the right side in the side view).',
+  tiltB: 'Slices the base at an angle, for example so the cone sits on a sloped surface or meets another pipe.',
+  ell: 'Squashes the round cross-section into an oval. 1 is round. 0.6 makes it 60% as deep (front to back) as it is wide. Ovals still flatten exactly, but they are harder to roll evenly.',
+  thick: 'Thickness of your copper. The template is drawn on the middle of the metal, because that line neither stretches nor shrinks when you roll it. Common sizes: 24 ga ≈ 0.51 mm, 22 ga ≈ 0.64 mm, 20 ga ≈ 0.81 mm, 18 ga ≈ 1.02 mm.',
+  ref: 'Which surface your diameters describe. Choose Outside if the cone must fit into something, or Inside if something must fit inside it. The difference is one sheet thickness on the diameter.',
+  pieces: 'Splits the wall into several identical-height gores, each with its own seam. Use this when one piece will not fit on your sheet, or to make a segmented look. Each piece gets its own solder lap.',
+  seamAngle: 'Where the seam runs around the cone. 0° is the side the top leans toward (right in the side view), 180° is the opposite side. Put it at the back, or on the shortest wall line to keep the seam short.',
+  seamTab: '<b>Solder lap.</b> A strip added along one seam edge of each piece. When you roll the piece closed, the plain edge on the other side overlaps this strip, and you solder through the overlap. It stays flat; you do not fold it. About 5–8 mm suits soft solder on thin copper. Set 0 for a butt seam, where the edges meet edge to edge (for silver solder, brazing or welding).',
+  botTabs: '<b>Base tabs.</b> Small flaps along the bottom edge that you fold over to make a foot. Fold them outward to make a visible flange, or inward to hide them under the cone. Then solder or rivet the foot to a base disc or plate. Each tab is narrow so it can bend on a curved edge without buckling, and the gaps between tabs relieve the curve. More tabs give a smoother foot. Roll and solder the seam first, then bend the tabs along the dashed line with flat-nose pliers.',
+  botTabDepth: 'How far each base tab sticks out past the edge. After folding, this is the width of the foot. Use at least 4–5× the sheet thickness. 6–10 mm is typical for soldering to a base.',
+  topTabs: '<b>Top tabs.</b> Same idea as base tabs, on the top rim. Use them to attach a top disc or lid, to fit a collar, or fold them inward to stiffen the rim and hide a sharp edge. They are skipped on a pointed cone.',
+  topTabDepth: 'How far each top tab sticks out. This becomes the width of the folded ledge.',
+  capBottom: 'Adds a template for a flat disc that closes the base. Its outline follows the true base shape, including oval or angled cuts. The angle marks line up with the marks on the wall piece.',
+  capTop: 'Adds a template for a flat disc or lid matching the top opening.',
+  capMargin: 'How far the disc extends beyond the outside of the cone wall. With tabs folded outward, use at least the tab depth so the tabs land on the disc. With tabs folded inward, or no tabs, 2–3 mm leaves a small ledge for the solder fillet. The dotted line on the disc shows where the wall sits.',
+  stations: 'How many evenly spaced angle marks and bend lines go around the cone. More lines make rolling easier to guide. 12 (every 30°) works for most pieces.',
+  showRulings: 'Draws the straight lines the metal bends along when it forms a cone. Roll with the mallet or bar along these, not parallel to the seam. On skewed cones they fan unevenly, and following them is what makes the shape come out right.',
+  autoRotate: 'Turns each piece to the angle that needs the smallest rectangle of paper and copper. Turn it off to keep the pattern upright and symmetrical.',
+  paper: 'The paper loaded in your printer. Large patterns are split across several sheets.',
+  orient: 'Fewest pages tries portrait and landscape and picks whichever needs fewer sheets.',
+  margin: 'Blank border your printer cannot print into. Most home printers need 5–8 mm. Content is kept inside a frame drawn at this margin.',
+  overlap: 'How much each page repeats from its neighbour. Trim one page on its dotted overlap line, lay it over the next, line up the grey crosses and tape.',
+  dataSheet: 'Prints a first page listing all settings, measurements, the reference-line table and a map of which page goes where.',
+};
+const FIELD = {}; FIELDS.forEach(([, items]) => items.forEach(f => FIELD[f.k] = f));
+
+let state = Object.assign({}, DEFAULTS);
+try { const s = JSON.parse(localStorage.getItem('cone-bench-v1') || 'null'); if (s) state = Object.assign({}, DEFAULTS, s); } catch (e) {}
+const saveState = () => { try { localStorage.setItem('cone-bench-v1', JSON.stringify(state)); } catch (e) {} };
+
+const U = () => state.unit === 'in' ? 25.4 : 1;
+const uName = () => state.unit === 'in' ? 'in' : 'mm';
+function fmtL(mm, dec) { return state.unit === 'in' ? (mm / 25.4).toFixed(dec ?? 3) + ' in' : mm.toFixed(dec ?? 1) + ' mm'; }
+function fmtN(mm) { return state.unit === 'in' ? (mm / 25.4).toFixed(3) : mm.toFixed(1); }
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+/* ---------------- Geometry ---------------- */
+// Reference surface: ellipse at z=0 and a similar ellipse at z=H, joined point-for-point. Because the two ellipses are
+// similar and parallel, the joining lines all meet at one apex: a true (possibly oblique) cone, which flattens exactly.
+// The top and base are then trimmed by planes tilted about the Y axis.
+function prep(p, useThickness) {
+  let r1 = p.D1 / 2, r2 = p.D2 / 2;
+  if (useThickness && p.thick > 0) {
+    const beta = Math.atan2(Math.abs(r1 - r2), Math.max(p.H, 1e-6));
+    const off = (p.thick / 2) / Math.cos(beta);
+    const s = p.ref === 'outside' ? -1 : p.ref === 'inside' ? 1 : 0;
+    r1 = r1 > 0 ? Math.max(0, r1 + s * off) : 0;
+    r2 = r2 > 0 ? Math.max(0, r2 + s * off) : 0;
+  }
+  return { r1, r2, H: p.H, ox: p.offX, oy: p.offY, kb: Math.tan(p.tiltB * DEG), kt: Math.tan(p.tiltT * DEG), e: p.ell };
+}
+function cutPts(g, th) {
+  const c = Math.cos(th), s = Math.sin(th);
+  const Bx = g.r1 * c, By = g.r1 * g.e * s;
+  const Tx = g.ox + g.r2 * c, Ty = g.oy + g.r2 * g.e * s;
+  const dx = Tx - Bx, dy = Ty - By, dz = g.H;
+  const db = dz - g.kb * dx, dt = dz - g.kt * dx;
+  const tb = (g.kb * Bx) / db, tt = (g.H + g.kt * (Bx - g.ox)) / dt;
+  return { b: [Bx + dx * tb, By + dy * tb, dz * tb], t: [Bx + dx * tt, By + dy * tt, dz * tt], ok: db > 1e-9 && dt > 1e-9 && tt > tb + 1e-6 };
+}
+const d3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+const d2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+// Point X with |XP| = a, |XQ| = b, on the right-hand side of P→Q.
+function place(P, Q, a, b) {
+  const dx = Q[0] - P[0], dy = Q[1] - P[1], d = Math.hypot(dx, dy);
+  if (d < 1e-12) return [P[0], P[1]];
+  const ux = dx / d, uy = dy / d;
+  const x = (a * a - b * b + d * d) / (2 * d), y = Math.sqrt(Math.max(0, a * a - x * x));
+  return [P[0] + ux * x + uy * y, P[1] + uy * x - ux * y];
+}
+// Triangulation development: each strip between neighbouring bend lines is split into two triangles laid flat edge to edge.
+function unfold(B, T) {
+  const b = [[0, 0]], t = [[0, d3(B[0], T[0])]];
+  for (let i = 0; i < B.length - 1; i++) {
+    b.push(place(b[i], t[i], d3(B[i + 1], B[i]), d3(B[i + 1], T[i])));
+    t.push(place(b[i + 1], t[i], d3(T[i + 1], B[i + 1]), d3(T[i + 1], T[i])));
+  }
+  return { b, t };
+}
+function cumLen(pl) { const S = [0]; for (let i = 1; i < pl.length; i++) S.push(S[i - 1] + d2(pl[i], pl[i - 1])); return S; }
+function at(pl, s, S) {
+  let i = 1; while (i < pl.length - 1 && S[i] < s) i++;
+  const seg = (S[i] - S[i - 1]) || 1e-9, f = (s - S[i - 1]) / seg;
+  const tx = (pl[i][0] - pl[i - 1][0]) / seg, ty = (pl[i][1] - pl[i - 1][1]) / seg;
+  return { p: [pl[i - 1][0] + tx * seg * f, pl[i - 1][1] + ty * seg * f], t: [tx, ty], n: [ty, -tx] };
+}
+// Add trapezoid tabs on the right-hand (outer) side of a polyline.
+function tabbed(pl, count, depth) {
+  const S = cumLen(pl), L = S[S.length - 1];
+  if (count < 1 || L < 1) return { pl, folds: [] };
+  const cell = L / count, w = cell * 0.55, out = [], folds = [];
+  let j = 0;
+  for (let k = 0; k < count; k++) {
+    const s0 = cell * (k + 0.5) - w / 2, s1 = s0 + w;
+    while (j < pl.length && S[j] < s0) out.push(pl[j++]);
+    const A = at(pl, s0, S), Bq = at(pl, s1, S), c = Math.min(depth * 0.5, w * 0.3);
+    const fold = [A.p];
+    while (j < pl.length && S[j] <= s1) fold.push(pl[j++]);
+    fold.push(Bq.p);
+    out.push(A.p, [A.p[0] + A.n[0] * depth + A.t[0] * c, A.p[1] + A.n[1] * depth + A.t[1] * c],
+      [Bq.p[0] + Bq.n[0] * depth - Bq.t[0] * c, Bq.p[1] + Bq.n[1] * depth - Bq.t[1] * c], Bq.p);
+    folds.push(fold);
+  }
+  while (j < pl.length) out.push(pl[j++]);
+  return { pl: out, folds };
+}
+function bboxOf(pts) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [x, y] of pts) { if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+  return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0 };
+}
+function bestAngle(pts) {
+  const sub = pts.filter((_, i) => i % 3 === 0);
+  const area = a => { const c = Math.cos(a), s = Math.sin(a); let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [x, y] of sub) { const X = x * c - y * s, Y = x * s + y * c; if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y; }
+    return (x1 - x0) * (y1 - y0); };
+  let best = 0, bA = Infinity;
+  for (let d = 0; d < 180; d += 1) { const A = area(d * DEG); if (A < bA) { bA = A; best = d * DEG; } }
+  for (let d = -1; d <= 1; d += 0.1) { const A = area(best + d * DEG); if (A < bA - 1e-9) { bA = A; best += d * DEG; } }
+  return best;
+}
+const normDeg = a => Math.round(((a % 360) + 360) % 360 * 10) / 10;
+function readableRot(dx, dy) { let a = Math.atan2(dy, dx) / DEG; if (a > 90) a -= 180; if (a < -90) a += 180; return a; }
+
+// Build one gore (flat piece) as drawing primitives in mm, y pointing down.
+function buildPiece(g, p, k, N) {
+  const span = 2 * Math.PI / N, th0 = p.seamAngle * DEG + k * span, segs = Math.max(60, Math.ceil(720 / N));
+  const ds = 2 * Math.PI / p.stations;
+  let ths = [];
+  for (let i = 0; i <= segs; i++) ths.push(th0 + span * i / segs);
+  const stAngles = [];
+  for (let j = Math.ceil((th0 - 1e-7) / ds); j * ds <= th0 + span + 1e-7; j++) stAngles.push(j * ds);
+  ths = ths.concat(stAngles).sort((a, b) => a - b).filter((v, i, arr) => i === 0 || v - arr[i - 1] > 1e-7);
+  const P = ths.map(t => cutPts(g, t)), B = P.map(q => q.b), T = P.map(q => q.t);
+  const { b, t } = unfold(B, T), M = b.length - 1;
+  const apexTop = d3(T[0], T[M]) < 1e-6 && d3(T[0], T[Math.floor(M / 2)]) < 1e-6;
+  const apexBot = d3(B[0], B[M]) < 1e-6 && d3(B[0], B[Math.floor(M / 2)]) < 1e-6;
+
+  const bot = apexBot ? { pl: b.slice(), folds: [] } : tabbed(b, p.botTabs, p.botTabDepth);
+  const topRev = t.slice().reverse();
+  const top = apexTop ? { pl: topRev, folds: [] } : tabbed(topRev, p.topTabs, p.topTabDepth);
+  const outline = bot.pl.slice(), folds = bot.folds.concat(top.folds);
+  let lapPoly = null;
+  if (p.seamTab > 0) {
+    const P0 = b[M], P1 = t[M], L = d2(P0, P1), ux = (P1[0] - P0[0]) / L, uy = (P1[1] - P0[1]) / L, nx = uy, ny = -ux;
+    const w = p.seamTab, c = Math.min(w, L * 0.3);
+    lapPoly = [[P0[0] + nx * w + ux * c, P0[1] + ny * w + uy * c], [P1[0] + nx * w - ux * c, P1[1] + ny * w - uy * c]];
+    outline.push(...lapPoly);
+    folds.push([P0, P1]);
+  }
+  outline.push(...top.pl);
+
+  // stations (bend reference lines)
+  const stIdx = stAngles.map(a => ({ a, i: ths.findIndex(v => Math.abs(v - a) < 1e-6) })).filter(o => o.i >= 0);
+
+  // orientation
+  let rot;
+  if (p.autoRotate) rot = bestAngle(outline);
+  else { const m = Math.floor(M / 2), vx = t[m][0] - b[m][0], vy = t[m][1] - b[m][1]; rot = Math.PI / 2 - Math.atan2(vy, vx); }
+  const c = Math.cos(rot), s = Math.sin(rot);
+  let R = q => [q[0] * c - q[1] * s, q[0] * s + q[1] * c];
+  const avgY = arr => arr.reduce((acc, q) => acc + R(q)[1], 0) / arr.length;
+  if (avgY(b) > avgY(t)) { const R0 = R; R = q => { const r = R0(q); return [-r[0], -r[1]]; }; }
+  const bb = bboxOf(outline.map(R));
+  const X = q => { const r = R(q); return [r[0] - bb.x0, bb.y1 - r[1]]; }; // y-down
+
+  const prims = [];
+  prims.push({ t: 'poly', c: 'cut', closed: true, pts: outline.map(X) });
+  folds.forEach(f => prims.push({ t: 'poly', c: 'fold', pts: f.map(X) }));
+  const longest = Math.max(...b.map((q, i) => d2(q, t[i])));
+  const innerC = (() => { const m = Math.floor(M / 2), p0 = X(b[m]), p1 = X(t[m]); return [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2]; })();
+  for (const { a, i } of stIdx) {
+    const bp = X(b[i]), tp = X(t[i]), L = d2(bp, tp); if (L < 1e-6) continue;
+    const ux = (tp[0] - bp[0]) / L, uy = (tp[1] - bp[1]) / L, tk = Math.min(5, L * 0.2);
+    const isEdge = i === 0 || i === M;
+    if (p.showRulings && !isEdge) prims.push({ t: 'poly', c: 'rule', pts: [bp, tp] });
+    prims.push({ t: 'poly', c: 'tick', pts: [bp, [bp[0] + ux * tk, bp[1] + uy * tk]] });
+    if (!apexTop) prims.push({ t: 'poly', c: 'tick', pts: [tp, [tp[0] - ux * tk, tp[1] - uy * tk]] });
+    if (L > 22) {
+      const off = isEdge ? 2.4 : 0, inx = innerC[0] - bp[0], iny = innerC[1] - bp[1];
+      let nx = -uy, ny = ux; if (nx * inx + ny * iny < 0) { nx = -nx; ny = -ny; }
+      prims.push({ t: 'text', x: bp[0] + ux * (tk + 4) + nx * off, y: bp[1] + uy * (tk + 4) + ny * off, s: normDeg(a / DEG) + '°', size: 2.6, rot: readableRot(ux, uy) - 90 + (readableRot(ux, uy) - 90 < -90 ? 180 : 0), a: 'middle' });
+    }
+  }
+  // labels
+  const m = Math.floor(M / 2), mb = X(b[m]), mt = X(t[m]), tan = [X(b[Math.min(M, m + 1)])[0] - X(b[Math.max(0, m - 1)])[0], X(b[Math.min(M, m + 1)])[1] - X(b[Math.max(0, m - 1)])[1]];
+  const lr = readableRot(tan[0], tan[1]), fs = clamp(longest / 14, 3, 6);
+  const cx = mb[0] + (mt[0] - mb[0]) * 0.5, cy = mb[1] + (mt[1] - mb[1]) * 0.5;
+  prims.push({ t: 'text', c: 'lbl', x: cx, y: cy, s: `PIECE ${k + 1} OF ${N}`, size: fs, rot: lr, a: 'middle' });
+  prims.push({ t: 'text', x: cx + Math.sin(-lr * DEG) * -fs * 1.2, y: cy + Math.cos(lr * DEG) * fs * 1.2, s: 'outside face · top edge ↑', size: fs * 0.55, rot: lr, a: 'middle' });
+  // seam length labels along both seam edges
+  const seamL = d3(B[0], T[0]), seamR = d3(B[M], T[M]);
+  [[0, seamL], [M, seamR]].forEach(([i, len]) => {
+    const bp = X(b[i]), tp = X(t[i]), L = d2(bp, tp); if (L < 30) return;
+    const ux = (tp[0] - bp[0]) / L, uy = (tp[1] - bp[1]) / L, mx = (bp[0] + tp[0]) / 2, my = (bp[1] + tp[1]) / 2;
+    // offset toward the inside of the piece so the label never lands on the solder lap
+    let nx = -uy, ny = ux; if (nx * (cx - mx) + ny * (cy - my) < 0) { nx = -nx; ny = -ny; }
+    prims.push({ t: 'text', x: mx + nx * 3.4, y: my + ny * 3.4 + 0.8, s: 'seam ' + fmtL(len), size: 2.4, rot: readableRot(ux, uy), a: 'middle' });
+  });
+  if (lapPoly && p.seamTab >= 4) {
+    const bp = X(b[M]), tp = X(t[M]), q0 = X(lapPoly[0]), q1 = X(lapPoly[1]);
+    const mx = (bp[0] + tp[0] + q0[0] + q1[0]) / 4, my = (bp[1] + tp[1] + q0[1] + q1[1]) / 4;
+    prims.push({ t: 'text', x: mx, y: my + 0.9, s: 'SOLDER LAP', size: Math.min(2.6, p.seamTab * 0.45), rot: readableRot(tp[0] - bp[0], tp[1] - bp[1]), a: 'middle' });
+  }
+  let area = 0;
+  for (let i = 0; i < M; i++) {
+    const tri = (a1, a2, a3) => Math.abs((a2[0] - a1[0]) * (a3[1] - a1[1]) - (a3[0] - a1[0]) * (a2[1] - a1[1])) / 2;
+    area += tri(b[i], b[i + 1], t[i]) + tri(b[i + 1], t[i + 1], t[i]);
+  }
+  return { prims, w: bb.w, h: bb.h, area, seamL, seamR, name: `Piece ${k + 1}` };
+}
+
+function buildCap(g, p, which) {
+  const isTop = which === 'top', k = isTop ? g.kt : g.kb, sec = Math.sqrt(1 + k * k);
+  const cx = isTop ? g.ox : 0, cy = isTop ? g.oy : 0, n = 360, curve = [];
+  for (let i = 0; i < n; i++) { const q = cutPts(g, i / n * 2 * Math.PI)[isTop ? 't' : 'b']; curve.push([(q[0] - cx) * sec, q[1] - cy]); }
+  const grow = p.capMargin + p.thick / 2;
+  const outl = curve.map((q, i) => {
+    const a = curve[(i - 1 + n) % n], b = curve[(i + 1) % n], tx = b[0] - a[0], ty = b[1] - a[1], L = Math.hypot(tx, ty) || 1;
+    return [q[0] + ty / L * grow, q[1] - tx / L * grow];
+  });
+  const bb = bboxOf(outl), X = q => [q[0] - bb.x0, bb.y1 - q[1]];
+  const prims = [{ t: 'poly', c: 'cut', closed: true, pts: outl.map(X) }];
+  const ctr = X([0, 0]);
+  prims.push({ t: 'poly', c: 'tick', pts: [[ctr[0] - 4, ctr[1]], [ctr[0] + 4, ctr[1]]] }, { t: 'poly', c: 'tick', pts: [[ctr[0], ctr[1] - 4], [ctr[0], ctr[1] + 4]] });
+  if (grow > 0.2) prims.push({ t: 'poly', c: 'rule', closed: true, pts: curve.map(X) });
+  for (let j = 0; j < p.stations; j++) {
+    const a = j * 360 / p.stations, i = Math.round(a / 360 * n) % n, q = X(curve[i]);
+    const vx = ctr[0] - q[0], vy = ctr[1] - q[1], L = Math.hypot(vx, vy) || 1;
+    prims.push({ t: 'poly', c: 'tick', pts: [q, [q[0] + vx / L * 5, q[1] + vy / L * 5]] });
+    if (L > 25) prims.push({ t: 'text', x: q[0] + vx / L * 9, y: q[1] + vy / L * 9 + 0.9, s: normDeg(a) + '°', size: 2.6, a: 'middle' });
+  }
+  const fs = clamp(bb.w / 14, 3, 5.5);
+  prims.push({ t: 'text', c: 'lbl', x: ctr[0], y: ctr[1] - 6, s: isTop ? 'TOP DISC' : 'BASE DISC', size: fs, a: 'middle' });
+  prims.push({ t: 'text', x: ctr[0], y: ctr[1] + 6 + fs * 0.5, s: 'seen from above', size: fs * 0.5, a: 'middle' });
+  return { prims, w: bb.w, h: bb.h, name: isTop ? 'Top disc' : 'Base disc' };
+}
+function buildCal() {
+  const prims = [
+    { t: 'poly', c: 'cal', closed: true, pts: [[0, 0], [50, 0], [50, 50], [0, 50]] },
+    { t: 'poly', c: 'cal', closed: true, pts: [[56, 24.6], [81.4, 24.6], [81.4, 50], [56, 50]] },
+    { t: 'text', x: 25, y: 27, s: '50 mm', size: 4, a: 'middle' },
+    { t: 'text', x: 25, y: 33, s: 'scale check', size: 2.6, a: 'middle' },
+    { t: 'text', x: 68.7, y: 38.5, s: '1 in', size: 3.2, a: 'middle' },
+  ];
+  return { prims, w: 81.4, h: 50, name: 'Scale check' };
+}
+
+function compute(p) {
+  const warns = [];
+  const g = prep(p, true);
+  if (g.r1 <= 0 && g.r2 <= 0) return { bad: true, warns: ['Base and top diameters cannot both be zero.'] };
+  for (let i = 0; i < 180; i++) if (!cutPts(g, i / 180 * 2 * Math.PI).ok) {
+    return { bad: true, warns: ['The top and base cuts cross each other or run along the wall. Reduce the cut angles or increase the height.'] };
+  }
+  const N = p.pieces, pieces = [];
+  for (let k = 0; k < N; k++) pieces.push(buildPiece(g, p, k, N));
+  const extras = [];
+  if (p.capBottom && g.r1 > 0) extras.push(buildCap(g, p, 'base'));
+  if (p.capTop && g.r2 > 0) extras.push(buildCap(g, p, 'top'));
+  extras.push(buildCal());
+  if (Math.abs(p.ell - 1) > 1e-3 && (Math.abs(p.tiltT) > 0 || Math.abs(p.tiltB) > 0)) {}
+  // layout: pieces in a row, extras stacked in a final column
+  const gap = 12, items = [];
+  let x = 0, Hrow = 0;
+  for (const it of pieces) { items.push({ it, x, y: 0 }); x += it.w + gap; Hrow = Math.max(Hrow, it.h); }
+  let y = 0, colW = 0; const colX = x;
+  for (const it of extras) {
+    if (y > 0 && y + it.h > Math.max(Hrow, 60)) { x = colX + colW + gap; y = 0; colW = 0; }
+    items.push({ it, x: x === colX && colW === 0 && y === 0 ? colX : x, y }); y += it.h + gap; colW = Math.max(colW, it.w);
+  }
+  // recompute width/height
+  let W = 0, Ht = 0;
+  for (const o of items) { W = Math.max(W, o.x + o.it.w); Ht = Math.max(Ht, o.y + o.it.h); }
+  // stations table
+  const st = [];
+  const gn = g;
+  for (let j = 0; j < p.stations; j++) { const a = j * 360 / p.stations, q = cutPts(gn, a * DEG); st.push({ a, L: d3(q.b, q.t), zb: q.b[2], zt: q.t[2] }); }
+  // perimeters
+  let pb = 0, pt = 0; const n = 720; let prev = cutPts(g, 0);
+  for (let i = 1; i <= n; i++) { const q = cutPts(g, i / n * 2 * Math.PI); pb += d3(q.b, prev.b); pt += d3(q.t, prev.t); prev = q; }
+  const area = pieces.reduce((a, o) => a + o.area, 0);
+  const right = Math.abs(p.offX) < 1e-9 && Math.abs(p.offY) < 1e-9 && Math.abs(p.tiltT) < 1e-9 && Math.abs(p.tiltB) < 1e-9 && Math.abs(p.ell - 1) < 1e-9;
+  let compass = null;
+  if (right && Math.abs(g.r1 - g.r2) > 1e-6) {
+    const slant = Math.hypot(g.H, g.r1 - g.r2), big = Math.max(g.r1, g.r2), small = Math.min(g.r1, g.r2);
+    const Ro = slant * big / (big - small), Ri = Ro - slant, ang = 360 * big / Ro;
+    compass = { slant, Ro, Ri, ang };
+  }
+  const maxPiece = pieces.reduce((a, o) => Math.max(a, o.w * o.h), 0);
+  if (pieces.some(o => o.w > 1200 || o.h > 1200)) warns.push('A piece is over 1.2 m across. Check the dimensions, or split it into more pieces.');
+  return { bad: false, warns, g, pieces, extras, items, W, H: Ht, st, pb, pt, area, compass, right, maxPiece };
+}
+
+/* ---------------- Tiling ---------------- */
+function tiling(L, p) {
+  const [pw, ph] = PAPERS[p.paper] || PAPERS.A4;
+  const opts = p.orient === 'auto' ? [false, true] : [p.orient === 'landscape'];
+  let best = null;
+  for (const land of opts) {
+    const w = land ? ph : pw, h = land ? pw : ph, m = p.margin;
+    const aw = w - 2 * m, ah = h - 2 * m, ov = Math.min(p.overlap, aw / 2, ah / 2);
+    const sx = aw - ov, sy = ah - ov;
+    const cols = L.W <= aw ? 1 : 1 + Math.ceil((L.W - aw) / sx), rows = L.H <= ah ? 1 : 1 + Math.ceil((L.H - ah) / sy);
+    const r = { land, w, h, m, aw, ah, ov, sx, sy, cols, rows, n: cols * rows };
+    if (!best || r.n < best.n) best = r;
+  }
+  return best;
+}
+
+/* ---------------- SVG output ---------------- */
+const f2 = v => (Math.round(v * 100) / 100).toString();
+function primsSVG(prims, ox, oy) {
+  let s = '';
+  for (const q of prims) {
+    if (q.t === 'poly') {
+      const d = q.pts.map((pt, i) => (i ? 'L' : 'M') + f2(pt[0] + ox) + ' ' + f2(pt[1] + oy)).join('') + (q.closed ? 'Z' : '');
+      s += `<path class="${q.c}" d="${d}"/>`;
+    } else {
+      const x = f2(q.x + ox), y = f2(q.y + oy);
+      s += `<text${q.c ? ` class="${q.c}"` : ''} x="${x}" y="${y}" font-size="${f2(q.size)}" text-anchor="${q.a || 'start'}"${q.rot ? ` transform="rotate(${f2(q.rot)} ${x} ${y})"` : ''}>${q.s}</text>`;
+    }
+  }
+  return s;
+}
+// Ruler along one axis in layout mm. axis 'x' runs horizontally at y=at; 'y' runs vertically at x=at.
+// dir is the side the ticks grow toward (+1 down/right, -1 up/left). Graduations follow the chosen unit.
+function rulerSVG(axis, from, to, at, dir, o) {
+  const inch = state.unit === 'in', base = inch ? 25.4 / 8 : 1, midN = inch ? 4 : 5, majN = inch ? 8 : 10;
+  const step = o.minor ? 1 : o.mid ? midN : majN;
+  let d = '', txt = '';
+  const i0 = Math.ceil(from / base / step - 1e-9) * step, i1 = Math.floor(to / base + 1e-9);
+  const off = dir > 0 ? o.L2 + 0.4 * o.font + o.font * 0.8 : -(o.L2 + 0.4 * o.font);
+  for (let i = i0; i <= i1; i += step) {
+    const v = i * base, maj = i % majN === 0, L = (maj ? o.L3 : i % midN === 0 ? o.L2 : o.L1) * dir;
+    d += axis === 'x' ? `M${f2(v)} ${f2(at)}v${f2(L)}` : `M${f2(at)} ${f2(v)}h${f2(L)}`;
+    if (maj && (i / majN) % o.labelEvery === 0) {
+      const lab = inch ? String(i / majN) : String(Math.round(v));
+      txt += axis === 'x'
+        ? `<text class="rt" x="${f2(v + o.font * 0.3)}" y="${f2(at + off)}" font-size="${f2(o.font)}">${lab}</text>`
+        : `<text class="rt" x="${f2(at + off)}" y="${f2(v - o.font * 0.3)}" font-size="${f2(o.font)}" transform="rotate(-90 ${f2(at + off)} ${f2(v - o.font * 0.3)})">${lab}</text>`;
+    }
+  }
+  return `<path class="rul" d="${d}"/>${txt}`;
+}
+function layoutSVG(R) { return R.items.map(o => primsSVG(o.it.prims, o.x, o.y)).join(''); }
+function rowLabel(r) { return String.fromCharCode(65 + (r % 26)) + (r >= 26 ? Math.floor(r / 26) : ''); }
+
+/* ---------------- Views ---------------- */
+let R = null, sketchVB = null, drag = null, cam = { yaw: -0.6, pitch: 0.42 };
+
+function renderPattern() {
+  const svg = $('#pattern');
+  if (R.bad) { svg.innerHTML = ''; return; }
+  const T = tiling(R, state), pad = 6;
+  let tiles = '';
+  for (let r = 0; r < T.rows; r++) for (let c = 0; c < T.cols; c++) {
+    const x = c * T.sx, y = r * T.sy;
+    tiles += `<rect class="tile" x="${f2(x)}" y="${f2(y)}" width="${f2(T.aw)}" height="${f2(T.ah)}"/><text class="tl" x="${f2(x + 3)}" y="${f2(y + 7)}" font-size="5">${rowLabel(r)}${c + 1}</text>`;
+  }
+  const vw = Math.max(R.W, T.cols > 1 ? (T.cols - 1) * T.sx + T.aw : T.aw), vh = Math.max(R.H, T.rows > 1 ? (T.rows - 1) * T.sy + T.ah : T.ah);
+  // rulers sized in screen pixels: estimate mm-per-pixel first
+  const cw = svg.clientWidth || 800, px = Math.min(cw / (vw + 40), (0.72 * innerHeight) / (vh + 40));
+  const unitMaj = state.unit === 'in' ? 25.4 : 10;
+  const o = { L1: 4 / px, L2: 7 / px, L3: 11 / px, font: 10 / px, minor: (state.unit === 'in' ? 25.4 / 8 : 1) * px >= 4, mid: (state.unit === 'in' ? 12.7 : 5) * px >= 4,
+    labelEvery: [1, 2, 5, 10, 20].find(n => n * unitMaj * px >= 36) || 50 };
+  const band = o.L3 + o.font * 1.4, gapR = 3 / px, lp = band + gapR + pad;
+  const rulers = `<rect class="rband" x="${f2(-lp)}" y="${f2(-band - gapR)}" width="${f2(vw + lp + pad)}" height="${f2(band)}"/>` +
+    `<rect class="rband" x="${f2(-band - gapR)}" y="${f2(-lp)}" width="${f2(band)}" height="${f2(vh + lp + pad)}"/>` +
+    rulerSVG('x', 0, vw, -gapR, -1, o) + rulerSVG('y', 0, vh, -gapR, -1, o) +
+    `<text class="rt" x="${f2(-band - gapR + 1 / px)}" y="${f2(-gapR - 2 / px)}" font-size="${f2(o.font * 0.9)}">${uName()}</text>`;
+  svg.setAttribute('viewBox', `${f2(-lp)} ${f2(-lp)} ${f2(vw + lp + pad)} ${f2(vh + lp + pad)}`);
+  svg.innerHTML = rulers + layoutSVG(R) + tiles;
+  $('#pv-note').textContent = `${T.n} page${T.n > 1 ? 's' : ''} of ${state.paper} ${T.land ? 'landscape' : 'portrait'}${state.dataSheet ? ' + data sheet' : ''}`;
+  return T;
+}
+
+function renderInfo(T) {
+  const W = $('#warns'); W.innerHTML = (R.warns || []).map(w => `<p class="warn">${w}</p>`).join('');
+  if (R.bad) { $('#stats').innerHTML = ''; $('#kv').innerHTML = ''; $('#stations').innerHTML = ''; return; }
+  const sheetW = R.pieces.reduce((a, o) => a + o.w, 0) + 10 * (R.pieces.length - 1), sheetH = Math.max(...R.pieces.map(o => o.h));
+  const grams = R.area * state.thick * 8.96e-3;
+  const areaTxt = state.unit === 'in' ? (R.area / 645.16).toFixed(1) + ' in²' : (R.area / 100).toFixed(1) + ' cm²';
+  $('#stats').innerHTML = [
+    [R.pieces.length, 'pieces'], [`${fmtN(sheetW)} × ${fmtN(sheetH)}`, `copper needed, ${uName()}`],
+    [areaTxt, 'wall area'], [grams.toFixed(0) + ' g', 'wall weight'], [T.n + (state.dataSheet ? 1 : 0), 'pages to print'],
+  ].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('');
+  const st = R.st, Ls = st.map(o => o.L);
+  const rows = [
+    ['Base edge length', fmtL(R.pb)], ['Top edge length', R.g.r2 > 0 ? fmtL(R.pt) : 'point'],
+    ['Shortest wall line', fmtL(Math.min(...Ls))], ['Longest wall line', fmtL(Math.max(...Ls))],
+    ...R.pieces.map(o => [`${o.name} seam lengths`, `${fmtN(o.seamL)} / ${fmtN(o.seamR)}`]),
+  ];
+  if (R.compass) rows.push(
+    ['Compass: outer radius', fmtL(R.compass.Ro)], ['Compass: inner radius', R.compass.Ri > 0.01 ? fmtL(R.compass.Ri) : 'point'],
+    ['Compass: sector angle', R.compass.ang.toFixed(2) + '°'], ['Slant height', fmtL(R.compass.slant)]);
+  rows.push(['Pattern line drawn at', 'middle of metal']);
+  $('#kv').innerHTML = rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
+  $('#stations').innerHTML = `<thead><tr><th>Angle</th><th>Wall line (${uName()})</th><th>Base height</th><th>Top height</th></tr></thead><tbody>` +
+    st.map(o => `<tr><td>${normDeg(o.a)}°</td><td>${fmtN(o.L)}</td><td>${fmtN(o.zb)}</td><td>${fmtN(o.zt)}</td></tr>`).join('') + '</tbody>';
+}
+
+function renderSketch() {
+  const svg = $('#sketch');
+  const g = prep(state, false);
+  if (R.bad) { svg.innerHTML = ''; }
+  const P0 = cutPts(g, 0), P1 = cutPts(g, Math.PI);
+  const bR = [P0.b[0], P0.b[2]], bL = [P1.b[0], P1.b[2]], tR = [P0.t[0], P0.t[2]], tL = [P1.t[0], P1.t[2]], tc = [g.ox, g.H];
+  if (!drag || !sketchVB) {
+    const xs = [bR[0], bL[0], tR[0], tL[0], tc[0], 0], zs = [bR[1], bL[1], tR[1], tL[1], tc[1], 0];
+    const x0 = Math.min(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+    let x1 = Math.max(...xs);
+    const span = Math.max(x1 - x0, z1 - z0, 40), pad = span * 0.22;
+    x1 += span * 0.2; // room for the height dimension label
+    const box = svg.getBoundingClientRect(), aspect = (box.width || 400) / (box.height || 330);
+    let w = x1 - x0 + 2 * pad, h = z1 - z0 + 2 * pad;
+    if (w / h < aspect) w = h * aspect; else h = w / aspect;
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    sketchVB = { x: cx - w / 2, y: -(cz + h / 2), w, h };
+  }
+  const vb = sketchVB;
+  svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  const step = state.unit === 'in' ? 12.7 : 10;
+  let s = '';
+  for (let x = Math.floor(vb.x / step) * step; x < vb.x + vb.w; x += step) s += `<line class="sk-grid" x1="${x}" y1="${vb.y}" x2="${x}" y2="${vb.y + vb.h}"/>`;
+  for (let y = Math.floor(vb.y / step) * step; y < vb.y + vb.h; y += step) s += `<line class="sk-grid" x1="${vb.x}" y1="${y}" x2="${vb.x + vb.w}" y2="${y}"/>`;
+  s += `<line class="sk-axis" x1="${vb.x}" y1="0" x2="${vb.x + vb.w}" y2="0"/><line class="sk-axis" x1="0" y1="${vb.y}" x2="0" y2="${vb.y + vb.h}"/>`;
+  const Y = p => [p[0], -p[1]];
+  if (!R.bad) {
+    const poly = [bL, bR, tR, tL].map(Y).map(p => p.join(',')).join(' ');
+    s += `<polygon class="sk-body" points="${poly}"/>`;
+    for (const a of [40, 75, 105, 140]) { const q = cutPts(g, a * DEG); s += `<line class="sk-rule" x1="${q.b[0]}" y1="${-q.b[2]}" x2="${q.t[0]}" y2="${-q.t[2]}"/>`; }
+  }
+  const fs = vb.w * 0.032, r = vb.w * 0.017, ink = `class="sk-txt" font-size="${fs}"`;
+  // dimensions
+  const yb = -Math.min(bL[1], bR[1]) + fs * 1.8, yt = -Math.max(tL[1], tR[1]) - fs * 1.2;
+  s += `<line class="sk-dim" x1="${bL[0]}" y1="${yb - fs * .6}" x2="${bR[0]}" y2="${yb - fs * .6}"/>`;
+  s += `<text ${ink} x="${(bL[0] + bR[0]) / 2}" y="${yb + fs * .6}" text-anchor="middle">⌀ ${fmtL(state.D1)}</text>`;
+  if (state.D2 > 0) s += `<text ${ink} x="${tc[0]}" y="${yt}" text-anchor="middle">⌀ ${fmtL(state.D2)}</text>`;
+  const xh = Math.max(bR[0], tR[0]) + fs * 1.5;
+  s += `<line class="sk-dim" x1="${xh}" y1="0" x2="${xh}" y2="${-g.H}"/><text ${ink} x="${xh + fs * .5}" y="${-g.H / 2}">${fmtL(state.H)}</text>`;
+  if (state.offX) s += `<text ${ink} x="${tc[0]}" y="${-tc[1] + fs * 2.2}" text-anchor="middle">skew ${fmtL(state.offX)}</text>`;
+  if (state.tiltT) s += `<text ${ink} x="${tL[0] - fs * .6}" y="${-tL[1] - fs * .6}" text-anchor="end">${state.tiltT}°</text>`;
+  if (state.tiltB) s += `<text ${ink} x="${bL[0] - fs * .6}" y="${-bL[1] + fs * 1.2}" text-anchor="end">${state.tiltB}°</text>`;
+  s += `<text ${ink} x="${bR[0] + fs * .5}" y="${-bR[1] + fs * 1.4}" style="opacity:.7">0°</text>`;
+  // handles
+  const dia = (k, p, cls) => `<circle data-h="${k}" class="${cls}" cx="${p[0]}" cy="${-p[1]}" r="${r}"/>`;
+  const dmd = (k, p) => `<rect data-h="${k}" class="h-tilt" x="${p[0] - r * .85}" y="${-p[1] - r * .85}" width="${r * 1.7}" height="${r * 1.7}" transform="rotate(45 ${p[0]} ${-p[1]})"/>`;
+  if (!R.bad) {
+    const tRh = state.D2 > 0 ? tR : [tc[0] + r * 3, tc[1]];
+    const bRh = state.D1 > 0 ? bR : [r * 3, 0];
+    if (state.D1 > 0) s += dmd('bL', bL);
+    if (state.D2 > 0) s += dmd('tL', tL);
+    s += dia('bR', bRh, 'h-dia') + dia('tR', tRh, 'h-dia');
+    s += `<circle data-h="tC" class="h-move" cx="${tc[0]}" cy="${-tc[1]}" r="${r * .9}"/>`;
+  }
+  svg.innerHTML = s;
+}
+
+function svgPoint(svg, e) { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); }
+function applyDrag(h, mx, mz) {
+  const r05 = v => Math.round(v * 2) / 2;
+  if (h === 'tC') { state.offX = r05(mx); state.H = Math.max(5, r05(mz)); }
+  else if (h === 'bR' || h === 'tR') {
+    const key = h === 'bR' ? 'D1' : 'D2', side = h === 'bR' ? 'b' : 't';
+    const base = h === 'bR' ? 0 : state.offX;
+    let D = Math.max(0, 2 * (mx - base));
+    for (let i = 0; i < 8; i++) { state[key] = D; const x = cutPts(prep(state, false), 0)[side][0]; D = Math.max(0, D + 2 * (mx - x)); }
+    state[key] = r05(D);
+  } else if (h === 'tL') { const dx = mx - state.offX; if (dx < -1) state.tiltT = r05(clamp(Math.atan((mz - state.H) / dx) / DEG, -60, 60)); }
+  else if (h === 'bL') { if (mx < -1) state.tiltB = r05(clamp(Math.atan(mz / mx) / DEG, -60, 60)); }
+}
+(function wireSketch() {
+  const svg = $('#sketch');
+  svg.addEventListener('pointerdown', e => { const h = e.target.closest('[data-h]'); if (!h) return; drag = h.dataset.h; svg.setPointerCapture(e.pointerId); e.preventDefault(); });
+  svg.addEventListener('pointermove', e => { if (!drag) return; const m = svgPoint(svg, e); applyDrag(drag, m.x, -m.y); scheduleUpdate(); });
+  const end = () => { if (!drag) return; drag = null; sketchVB = null; scheduleUpdate(); };
+  svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+})();
+
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function hexRGB(h) { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); const n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function render3D() {
+  const cv = $('#view3d'), dpr = window.devicePixelRatio || 1, bw = cv.clientWidth, bh = cv.clientHeight;
+  if (cv.width !== Math.round(bw * dpr) || cv.height !== Math.round(bh * dpr)) { cv.width = Math.round(bw * dpr); cv.height = Math.round(bh * dpr); }
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, bw, bh);
+  if (R.bad) return;
+  const g = R.g, N = 96, B = [], T = [];
+  for (let i = 0; i <= N; i++) { const q = cutPts(g, i / N * 2 * Math.PI); B.push(q.b); T.push(q.t); }
+  const all = B.concat(T); let c = [0, 0, 0], ext = 0;
+  const lo = [0, 1, 2].map(k => Math.min(...all.map(p => p[k]))), hi = [0, 1, 2].map(k => Math.max(...all.map(p => p[k])));
+  c = lo.map((v, k) => (v + hi[k]) / 2); ext = Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2;
+  const sc = 0.9 * Math.min(bw, bh) / 2 / (ext || 1), cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const view = p => { const x = p[0], y = p[1], z = p[2]; const x1 = x * cy - y * sy, y1 = x * sy + y * cy; return [x1, y1 * cp - z * sp, y1 * sp + z * cp]; };
+  const proj = p => { const v = view([p[0] - c[0], p[1] - c[1], p[2] - c[2]]); return [bw / 2 + v[0] * sc, bh / 2 - v[2] * sc, v[1]]; };
+  const PB = B.map(proj), PT = T.map(proj);
+  const base = hexRGB(css('--copper') || '#a4532a');
+  const L = [-0.45, -0.75, 0.5], Ln = Math.hypot(...L); L.forEach((v, i) => L[i] = v / Ln);
+  const quads = [];
+  for (let i = 0; i < N; i++) {
+    const e1 = [B[i + 1][0] - B[i][0], B[i + 1][1] - B[i][1], B[i + 1][2] - B[i][2]];
+    const e2 = [T[i][0] - B[i][0], T[i][1] - B[i][1], T[i][2] - B[i][2]];
+    let n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    if (Math.hypot(...n) < 1e-12) { const e3 = [T[i + 1][0] - B[i][0], T[i + 1][1] - B[i][1], T[i + 1][2] - B[i][2]]; n = [e1[1] * e3[2] - e1[2] * e3[1], e1[2] * e3[0] - e1[0] * e3[2], e1[0] * e3[1] - e1[1] * e3[0]]; }
+    let nv = view(n); const nl = Math.hypot(...nv) || 1; nv = nv.map(v => v / nl);
+    const outside = nv[1] < 0; if (!outside) nv = nv.map(v => -v);
+    const lit = Math.max(0, nv[0] * L[0] + nv[1] * L[1] + nv[2] * L[2]);
+    const k = (outside ? 0.45 : 0.22) + (outside ? 0.75 : 0.35) * lit;
+    quads.push({ d: (PB[i][2] + PB[i + 1][2] + PT[i][2] + PT[i + 1][2]) / 4, pts: [PB[i], PB[i + 1], PT[i + 1], PT[i]], col: `rgb(${base.map(v => Math.min(255, Math.round(v * k))).join(',')})` });
+  }
+  quads.sort((a, b) => b.d - a.d);
+  for (const q of quads) { ctx.beginPath(); q.pts.forEach((p, j) => j ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.fillStyle = q.col; ctx.strokeStyle = q.col; ctx.lineWidth = 0.6; ctx.fill(); ctx.stroke(); }
+  ctx.strokeStyle = css('--ink'); ctx.globalAlpha = 0.55; ctx.lineWidth = 1;
+  for (const arr of [PB, PT]) { ctx.beginPath(); arr.forEach((p, j) => j ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); }
+  ctx.globalAlpha = 1; ctx.strokeStyle = css('--verdigris'); ctx.lineWidth = 2.2;
+  for (let k = 0; k < state.pieces; k++) { const q = cutPts(g, state.seamAngle * DEG + k * 2 * Math.PI / state.pieces), a = proj(q.b), b = proj(q.t); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); }
+}
+(function wire3D() {
+  const cv = $('#view3d'); let last = null;
+  cv.addEventListener('pointerdown', e => { last = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', e => { if (!last) return; cam.yaw += (e.clientX - last[0]) * 0.01; cam.pitch = clamp(cam.pitch + (e.clientY - last[1]) * 0.01, -1.4, 1.4); last = [e.clientX, e.clientY]; render3D(); });
+  const end = () => last = null; cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  cv.addEventListener('dblclick', () => { cam = { yaw: -0.6, pitch: 0.42 }; render3D(); });
+})();
+
+/* ---------------- Controls ---------------- */
+function dispVal(f, v) { if (f.type === 'len') { const x = v / U(); return state.unit === 'in' ? +x.toFixed(3) : +x.toFixed(2); } return v; }
+function buildControls() {
+  const host = $('#controls'); host.innerHTML = '';
+  for (const [grp, items] of FIELDS) {
+    const fs = document.createElement('fieldset'); fs.innerHTML = `<legend>${grp}</legend>`;
+    for (const f of items) {
+      const row = document.createElement('div'), id = 'f-' + f.k; row.className = 'ctl';
+      const lab = `<span class="lab"><label for="${id}">${f.label}</label>${HELP[f.k] ? `<button type="button" class="q" aria-label="About ${f.label}" aria-describedby="${id}-tip">?</button>` : ''}</span>`;
+      if (f.type === 'bool') { row.classList.add('chk'); row.innerHTML = `<input type="checkbox" id="${id}">${lab}`; }
+      else if (f.type === 'select') row.innerHTML = `${lab}<span></span><select id="${id}">${f.options.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`;
+      else {
+        const isLen = f.type === 'len', u = isLen ? uName() : f.type === 'deg' ? '°' : f.type === 'num' ? '×' : '';
+        const step = isLen && state.unit === 'in' ? (f.step < 0.1 ? 0.005 : 0.01) : f.step;
+        const mn = isLen ? f.min / U() : f.min, mx = isLen ? f.max / U() : f.max;
+        row.innerHTML = `${lab}<div class="num"><input id="${id}" type="number" step="${step}" inputmode="decimal"><span>${u}</span></div>` +
+          `<input type="range" id="${id}-r" min="${mn}" max="${mx}" step="${step}" aria-label="${f.label}">`;
+      }
+      if (f.hint) row.insertAdjacentHTML('beforeend', `<div class="hint">${f.hint}</div>`);
+      if (HELP[f.k]) row.insertAdjacentHTML('beforeend', `<div class="tip" role="tooltip" id="${id}-tip">${HELP[f.k]}</div>`);
+      fs.appendChild(row);
+    }
+    host.appendChild(fs);
+  }
+  syncControls();
+}
+// Help popups: hover on desktop, tap to toggle on touch, Escape or tapping elsewhere closes.
+function closeTips(except) { document.querySelectorAll('.ctl.tip-open').forEach(r => { if (r !== except) r.classList.remove('tip-open'); }); }
+document.addEventListener('click', e => {
+  const q = e.target.closest('.q');
+  if (q) { const row = q.closest('.ctl'); closeTips(row); row.classList.toggle('tip-open'); return; }
+  if (!e.target.closest('.tip')) closeTips();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTips(); });
+{
+  const host = $('#controls');
+  host.addEventListener('input', onCtl); host.addEventListener('change', onCtl);
+}
+function onCtl(e) {
+  const el = e.target; if (!el.id || !el.id.startsWith('f-')) return;
+  const k = el.id.slice(2).replace(/-r$/, ''), f = FIELD[k]; if (!f) return;
+  if (f.type === 'bool') state[k] = el.checked;
+  else if (f.type === 'select') state[k] = el.value;
+  else {
+    let v = parseFloat(el.value); if (!isFinite(v)) return;
+    if (f.type === 'len') v *= U();
+    if (f.type === 'int') v = Math.round(v);
+    if (f.type === 'int' || k === 'H' || k === 'ell' || k === 'stations') v = Math.max(f.min, v);
+    if (f.type === 'len' || f.type === 'num') v = Math.max(k === 'offX' || k === 'offY' ? -Infinity : (f.min > 0 ? f.min : 0), v);
+    if (f.type === 'deg' && k !== 'seamAngle') v = clamp(v, -80, 80);
+    if (f.type === 'int') v = Math.min(f.max, v);
+    state[k] = v;
+  }
+  if (SHAPE_KEYS.includes(k)) sketchVB = null;
+  syncControls(el); scheduleUpdate();
+}
+function syncControls(except) {
+  for (const k in FIELD) {
+    const f = FIELD[k], el = document.getElementById('f-' + k); if (!el) continue;
+    if (f.type === 'bool') el.checked = !!state[k];
+    else if (f.type === 'select') el.value = state[k];
+    else {
+      const v = dispVal(f, state[k]);
+      if (el !== except && document.activeElement !== el) el.value = v;
+      const r = document.getElementById('f-' + k + '-r'); if (r && r !== except) r.value = v;
+    }
+  }
+  $('#u-mm').setAttribute('aria-pressed', state.unit === 'mm'); $('#u-in').setAttribute('aria-pressed', state.unit === 'in');
+}
+function setUnit(u) { state.unit = u; buildControls(); scheduleUpdate(); }
+$('#u-mm').onclick = () => setUnit('mm'); $('#u-in').onclick = () => setUnit('in');
+$('#presets').innerHTML = PRESETS.map(([n], i) => `<button type="button" data-p="${i}">${n}</button>`).join('');
+$('#presets').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (!b) return; Object.assign(state, PRESETS[+b.dataset.p][1]); sketchVB = null; syncControls(); scheduleUpdate(); });
+
+/* ---------------- Print & export ---------------- */
+function buildPrint() {
+  if (!R || R.bad) return false;
+  const T = tiling(R, state), content = layoutSVG(R);
+  $('#page-size').textContent = `@page { size: ${f2(T.w)}mm ${f2(T.h)}mm; margin: 0 }`;
+  // alignment crosses every 50 mm across the layout
+  let guides = '';
+  const gw = (T.cols - 1) * T.sx + T.aw, gh = (T.rows - 1) * T.sy + T.ah;
+  for (let x = 0; x <= gw + 0.1; x += 50) for (let y = 0; y <= gh + 0.1; y += 50) guides += `<path class="guide" d="M${x - 2.5} ${y}H${x + 2.5}M${x} ${y - 2.5}V${y + 2.5}"/>`;
+  let html = '';
+  if (state.dataSheet) html += dataSheet(T);
+  for (let r = 0; r < T.rows; r++) for (let c = 0; c < T.cols; c++) {
+    const id = `cp${r}_${c}`, m = T.m, tx = m - c * T.sx, ty = m - r * T.sy, name = rowLabel(r) + (c + 1);
+    let ov = '';
+    if (c < T.cols - 1 && T.ov > 0) ov += `<line class="ovl" x1="${f2(m + T.aw - T.ov)}" y1="${m}" x2="${f2(m + T.aw - T.ov)}" y2="${f2(m + T.ah)}"/>`;
+    if (r < T.rows - 1 && T.ov > 0) ov += `<line class="ovl" x1="${m}" y1="${f2(m + T.ah - T.ov)}" x2="${f2(m + T.aw)}" y2="${f2(m + T.ah - T.ov)}"/>`;
+    const po = { L1: 1.2, L2: 2.2, L3: 3.6, font: 1.8, minor: true, mid: true, labelEvery: 1 };
+    const rul = rulerSVG('x', c * T.sx, c * T.sx + T.aw, r * T.sy, 1, po) + rulerSVG('y', r * T.sy, r * T.sy + T.ah, c * T.sx, 1, po);
+    const meta = `Page ${name} of ${rowLabel(T.rows - 1)}${T.cols} · print at 100% · rulers in ${uName()}, continuous across pages · trim dotted overlap, align crosses`;
+    html += `<div class="page" style="width:${f2(T.w)}mm;height:${f2(T.h - 0.6)}mm"><svg class="pg" width="${f2(T.w)}mm" height="${f2(T.h)}mm" viewBox="0 0 ${f2(T.w)} ${f2(T.h)}">` +
+      `<defs><clipPath id="${id}"><rect x="${m}" y="${m}" width="${f2(T.aw)}" height="${f2(T.ah)}"/></clipPath></defs>` +
+      `<rect class="frame" x="${m}" y="${m}" width="${f2(T.aw)}" height="${f2(T.ah)}"/>` +
+      `<g clip-path="url(#${id})"><g transform="translate(${f2(tx)} ${f2(ty)})">${guides}${content}${rul}</g></g>${ov}` +
+      `<text class="meta" x="${m}" y="${f2(Math.max(2.6, m - 1.6))}" font-size="2.4">${meta}</text>` +
+      `<text class="lbl" x="${f2(T.w - m)}" y="${f2(Math.max(3, m - 1.4))}" font-size="${Math.min(5, Math.max(3, m - 2))}" text-anchor="end">${name}</text></svg></div>`;
+  }
+  $('#print-root').innerHTML = html;
+  return true;
+}
+function dataSheet(T) {
+  const rows = [];
+  for (const [grp, items] of FIELDS.slice(0, 3)) for (const f of items) {
+    let v = state[f.k];
+    if (f.type === 'len') v = fmtL(v); else if (f.type === 'deg') v = v + '°'; else if (f.type === 'select') v = (f.options.find(o => o[0] === v) || [, v])[1];
+    rows.push(`<tr><td>${f.label}</td><td class="n">${v}</td></tr>`);
+  }
+  const kv = [...document.querySelectorAll('#kv dt')].map((dt, i) => `<tr><td>${dt.textContent}</td><td class="n">${document.querySelectorAll('#kv dd')[i].textContent}</td></tr>`).join('');
+  const st = R.st.map(o => `<tr><td class="n">${normDeg(o.a)}°</td><td class="n">${fmtN(o.L)}</td><td class="n">${fmtN(o.zb)}</td><td class="n">${fmtN(o.zt)}</td></tr>`).join('');
+  // tile map
+  const sc = Math.min(80 / ((T.cols - 1) * T.sx + T.aw), 60 / ((T.rows - 1) * T.sy + T.ah));
+  let map = `<svg width="${f2(((T.cols - 1) * T.sx + T.aw) * sc + 2)}mm" height="${f2(((T.rows - 1) * T.sy + T.ah) * sc + 2)}mm" viewBox="-1 -1 ${f2(((T.cols - 1) * T.sx + T.aw) * sc + 2)} ${f2(((T.rows - 1) * T.sy + T.ah) * sc + 2)}"><g transform="scale(${sc})" class="pg">${layoutSVG(R).replace(/<text[^>]*>.*?<\/text>/g, '')}</g>`;
+  for (let r = 0; r < T.rows; r++) for (let c = 0; c < T.cols; c++) map += `<rect x="${f2(c * T.sx * sc)}" y="${f2(r * T.sy * sc)}" width="${f2(T.aw * sc)}" height="${f2(T.ah * sc)}" fill="none" stroke="#888" stroke-width=".25"/><text x="${f2(c * T.sx * sc + 1.5)}" y="${f2(r * T.sy * sc + 4)}" font-size="3.2">${rowLabel(r)}${c + 1}</text>`;
+  map += '</svg>';
+  return `<div class="page sheet" style="width:${f2(T.w)}mm"><h1>Cone pattern data</h1>
+  <div style="color:#555">${T.n} pattern page${T.n > 1 ? 's' : ''}, ${state.paper} ${T.land ? 'landscape' : 'portrait'}. Print at 100% and confirm the 50 mm square measures 50 mm.</div>
+  <div class="cols"><div><h3>Design</h3><table>${rows.join('')}</table></div><div><h3>Measurements</h3><table>${kv}</table><h3>Page layout</h3>${map}</div></div>
+  <div class="cols"><div><h3>Reference lines (${uName()})</h3><table><tr><th class="n">Angle</th><th class="n">Wall line</th><th class="n">Base ht</th><th class="n">Top ht</th></tr>${st}</table></div>
+  <div><h3>Steps</h3><ol><li>Trim pages on the frame line at the dotted overlap, align the crosses, tape.</li><li>Glue to copper, cut the solid lines, cut tabs before forming.</li><li>Printed side is the outside. Roll along the dotted bend lines.</li><li>Lap the plain seam edge over the solder lap, check wall-line lengths, then solder.</li></ol></div></div></div>`;
+}
+window.addEventListener('beforeprint', buildPrint);
+$('#btn-print').onclick = () => { if (buildPrint()) window.print(); };
+
+function download(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type })), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function fileStem() { return `cone_D${fmtN(state.D1)}_d${fmtN(state.D2)}_H${fmtN(state.H)}${state.unit}`.replace(/\./g, 'p'); }
+$('#btn-svg').onclick = () => {
+  if (!R || R.bad) return;
+  const W = R.W + 20, H = R.H + 20;
+  const style = `.cut{fill:none;stroke:#000;stroke-width:.3}.fold{fill:none;stroke:#0a7;stroke-width:.25;stroke-dasharray:2.5 1.5}.rule{fill:none;stroke:#c60;stroke-width:.18;stroke-dasharray:.6 1.4}.tick,.cal{fill:none;stroke:#000;stroke-width:.25}text{font-family:Consolas,monospace}.lbl{font-family:Arial,sans-serif;font-weight:700}`;
+  download(fileStem() + '.svg', `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${f2(W)}mm" height="${f2(H)}mm" viewBox="-10 -10 ${f2(W)} ${f2(H)}"><style>${style}</style>${layoutSVG(R)}</svg>`, 'image/svg+xml');
+};
+$('#btn-dxf').onclick = () => {
+  if (!R || R.bad) return;
+  const out = ['0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '0', 'ENDSEC', '0', 'SECTION', '2', 'ENTITIES'];
+  const layer = { cut: 'CUT', fold: 'FOLD', rule: 'BEND', tick: 'MARK', cal: 'MARK' };
+  for (const o of R.items) for (const q of o.it.prims) {
+    if (q.t !== 'poly') continue;
+    const pts = q.pts.map(p => [p[0] + o.x, R.H - (p[1] + o.y)]); if (q.closed) pts.push(pts[0]);
+    for (let i = 0; i < pts.length - 1; i++) out.push('0', 'LINE', '8', layer[q.c] || 'MARK', '10', pts[i][0].toFixed(4), '20', pts[i][1].toFixed(4), '30', '0', '11', pts[i + 1][0].toFixed(4), '21', pts[i + 1][1].toFixed(4), '31', '0');
+  }
+  out.push('0', 'ENDSEC', '0', 'EOF');
+  download(fileStem() + '.dxf', out.join('\r\n'), 'application/dxf');
+};
+
+/* ---------------- Update loop ---------------- */
+let pending = false;
+function scheduleUpdate() { if (pending) return; pending = true; requestAnimationFrame(() => { pending = false; update(); }); }
+function update() {
+  syncControls();
+  R = compute(state);
+  const T = renderPattern();
+  renderInfo(T || { n: 0 });
+  renderSketch(); render3D(); saveState();
+}
+window.addEventListener('resize', () => { sketchVB = null; scheduleUpdate(); });
+if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => render3D());
+buildControls(); update();
+</script>
+</body>
+</html>
